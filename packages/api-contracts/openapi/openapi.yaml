@@ -1,0 +1,32 @@
+openapi: 3.1.0
+info:
+  title: CultureSpark Reservation API
+  version: 0.1.0
+  description: >-
+    Contract-first OpenAPI source for the MVP. Scope excludes online payments and
+    SMS/email notifications. All date-time values are RFC3339 and interpreted in
+    Europe/Istanbul unless specified otherwise.
+servers:
+  - url: http://localhost:3001
+    description: Local API server
+paths:
+  /health:
+    get:
+      summary: API health check
+      operationId: getHealth
+      responses:
+        "200":
+          description: API is healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, timezone]
+                properties:
+                  status:
+                    type: string
+                    enum: [ok]
+                  timezone:
+                    type: string
+                    enum: [Europe/Istanbul]
+components: {}

@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+
+<html class="light" lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Randevu Takvimi - Admin Dashboard</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13ec80",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#102219",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body { font-family: 'Public Sans', sans-serif; }
+        .calendar-grid {
+            display: grid;
+            grid-template-columns: 80px repeat(7, 1fr);
+        }
+        .time-slot { height: 80px; }
+        .sidebar-item-active {
+            border-right: 4px solid #13ec80;
+            background: rgba(19, 236, 128, 0.1);
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark font-display text-slate-800 dark:text-slate-100 overflow-hidden">
+<div class="flex h-screen w-full">
+<!-- Sidebar Navigation -->
+<aside class="w-64 bg-white dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 flex flex-col">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-primary rounded-lg flex items-center justify-center text-white shadow-lg shadow-primary/20">
+<span class="material-icons">content_cut</span>
+</div>
+<span class="text-xl font-bold tracking-tight">GLAM ADMIN</span>
+</div>
+</div>
+<nav class="flex-1 py-6">
+<ul class="space-y-1">
+<li>
+<a class="sidebar-item-active flex items-center gap-3 px-6 py-3 text-primary font-medium" href="#">
+<span class="material-icons">calendar_today</span>
+<span>Takvim</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-icons">block</span>
+<span>Hizmet Devre Dışı Bırak</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-icons">people</span>
+<span>Personel Yönetimi</span>
+</a>
+</li>
+<li>
+<a class="flex items-center gap-3 px-6 py-3 text-slate-500 hover:text-primary transition-colors" href="#">
+<span class="material-icons">analytics</span>
+<span>Raporlar</span>
+</a>
+</li>
+</ul>
+</nav>
+<div class="p-6 border-t border-slate-200 dark:border-slate-800">
+<div class="bg-slate-50 dark:bg-slate-800 p-4 rounded-xl flex items-center gap-3">
+<img class="w-10 h-10 rounded-full object-cover" data-alt="Admin user profile headshot photo" src="https://lh3.googleusercontent.com/aida-public/AB6AXuBwOhOIxfJ82qxcjUKiHqYqRc82KqGAO0VdfM1bRsv7z5pYvRhJzO_sMfTGumZ0lLLEWM8P5w4NoV4DqyMR8G0_vn2KLXshHSIlQJej3DcjrCsJTZOHhrm3q7JmPZNfG9zszp-voTPuAgtXdKUBNajIe9xUTFNk33ToOg-loCbRMCeCOzTwQHO4bgV8v-1rT-EJyGWmL0Q5ZfHcwSyOKZzk5n98c_eovrNSEpUzEYx9eXO3KAOigVYCjphKkCEztA9x8xsd7PVTSJrU"/>
+<div>
+<p class="text-sm font-semibold">Ahmet Yılmaz</p>
+<p class="text-xs text-slate-500">Süper Admin</p>
+</div>
+</div>
+</div>
+</aside>
+<!-- Main Content Area -->
+<main class="flex-1 flex flex-col relative overflow-hidden">
+<!-- Header -->
+<header class="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-8">
+<div class="flex items-center gap-6">
+<div class="relative">
+<label class="text-[10px] uppercase tracking-wider text-slate-400 font-bold absolute -top-2 left-3 bg-white dark:bg-slate-900 px-1">Şube Seçiniz</label>
+<select class="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg pl-3 pr-10 py-2.5 text-sm font-medium focus:ring-primary focus:border-primary">
+<option>Nişantaşı Merkez Şube</option>
+<option>Kadıköy Moda Şube</option>
+<option>Etiler Lux Şube</option>
+</select>
+</div>
+<div class="h-10 w-px bg-slate-200 dark:bg-slate-800"></div>
+<div class="flex items-center gap-4">
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+<span class="material-icons text-slate-400">chevron_left</span>
+</button>
+<h2 class="text-lg font-bold">15 - 21 Mayıs 2023</h2>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full">
+<span class="material-icons text-slate-400">chevron_right</span>
+</button>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="relative">
+<span class="material-icons absolute left-3 top-2.5 text-slate-400">search</span>
+<input class="bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-full pl-10 pr-4 py-2 text-sm w-64 focus:ring-primary" placeholder="Müşteri veya randevu ara..." type="text"/>
+</div>
+<button class="bg-primary text-white px-5 py-2 rounded-full font-semibold flex items-center gap-2 hover:opacity-90 transition-opacity">
+<span class="material-icons text-sm">add</span>
+                        Yeni Randevu
+                    </button>
+</div>
+</header>
+<!-- Calendar Container -->
+<div class="flex-1 overflow-auto bg-white dark:bg-slate-950 p-6">
+<div class="min-w-[1000px]">
+<!-- Days Header -->
+<div class="calendar-grid border-b border-slate-200 dark:border-slate-800 pb-4 sticky top-0 bg-white dark:bg-slate-950 z-10">
+<div></div>
+<div class="text-center">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Pzt</p>
+<p class="text-2xl font-bold">15</p>
+</div>
+<div class="text-center text-primary">
+<p class="text-xs font-bold uppercase tracking-widest">Sal</p>
+<p class="text-2xl font-bold">16</p>
+</div>
+<div class="text-center">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Çar</p>
+<p class="text-2xl font-bold">17</p>
+</div>
+<div class="text-center">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Per</p>
+<p class="text-2xl font-bold">18</p>
+</div>
+<div class="text-center">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Cum</p>
+<p class="text-2xl font-bold">19</p>
+</div>
+<div class="text-center">
+<p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Cmt</p>
+<p class="text-2xl font-bold">20</p>
+</div>
+<div class="text-center text-rose-500">
+<p class="text-xs font-bold uppercase tracking-widest">Paz</p>
+<p class="text-2xl font-bold">21</p>
+</div>
+</div>
+<!-- Time Slots & Appointments -->
+<div class="calendar-grid relative">
+<!-- Time Labels Column -->
+<div class="flex flex-col text-xs text-slate-400 font-medium">
+<div class="time-slot pt-2">08:00</div>
+<div class="time-slot pt-2">09:00</div>
+<div class="time-slot pt-2">10:00</div>
+<div class="time-slot pt-2">11:00</div>
+<div class="time-slot pt-2">12:00</div>
+<div class="time-slot pt-2">13:00</div>
+<div class="time-slot pt-2">14:00</div>
+<div class="time-slot pt-2">15:00</div>
+<div class="time-slot pt-2">16:00</div>
+<div class="time-slot pt-2">17:00</div>
+</div>
+<!-- Days Columns Grid Lines -->
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full"></div>
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full bg-primary/5">
+<!-- Appointment Card Example -->
+<div class="absolute top-40 left-2 right-2 h-[120px] bg-white dark:bg-slate-800 border-l-4 border-primary rounded shadow-md p-3 z-0 ring-2 ring-primary">
+<p class="text-[10px] font-bold text-primary mb-1">10:00 - 11:30</p>
+<p class="font-bold text-sm truncate">Ayşe Demir</p>
+<p class="text-xs text-slate-500 mb-2">0532 555 1234</p>
+<div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-700">
+<span class="material-icons text-xs text-slate-400">person</span>
+<span class="text-[10px] font-semibold">Ceyda K.</span>
+</div>
+</div>
+</div>
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full">
+<div class="absolute top-20 left-2 right-2 h-[80px] bg-indigo-50 dark:bg-indigo-900/30 border-l-4 border-indigo-500 rounded p-3">
+<p class="text-[10px] font-bold text-indigo-500 mb-1">08:30 - 09:30</p>
+<p class="font-bold text-sm truncate">Merve Gün</p>
+<div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-700/50">
+<span class="material-icons text-xs text-slate-400">person</span>
+<span class="text-[10px] font-semibold">Bora S.</span>
+</div>
+</div>
+</div>
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full"></div>
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full">
+<div class="absolute top-60 left-2 right-2 h-[160px] bg-amber-50 dark:bg-amber-900/30 border-l-4 border-amber-500 rounded p-3">
+<p class="text-[10px] font-bold text-amber-500 mb-1">11:00 - 13:00</p>
+<p class="font-bold text-sm truncate">Zeynep Sert</p>
+<p class="text-xs text-slate-500 mb-2">0541 222 9988</p>
+<div class="flex items-center gap-1.5 pt-1 border-t border-slate-100 dark:border-slate-700/50">
+<span class="material-icons text-xs text-slate-400">person</span>
+<span class="text-[10px] font-semibold">Elif T.</span>
+</div>
+</div>
+</div>
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full"></div>
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full"></div>
+<div class="border-l border-slate-100 dark:border-slate-800 relative h-full bg-slate-50 dark:bg-slate-900/50"></div>
+<!-- Horizontal Time Lines -->
+<div class="absolute top-0 left-[80px] right-0 h-px bg-slate-100 dark:bg-slate-800" style="top: 0px"></div>
+<div class="absolute top-0 left-[80px] right-0 h-px bg-slate-100 dark:border-slate-800" style="top: 80px"></div>
+<div class="absolute top-0 left-[80px] right-0 h-px bg-slate-100 dark:border-slate-800" style="top: 160px"></div>
+<div class="absolute top-0 left-[80px] right-0 h-px bg-slate-100 dark:border-slate-800" style="top: 240px"></div>
+<div class="absolute top-0 left-[80px] right-0 h-px bg-slate-100 dark:border-slate-800" style="top: 320px"></div>
+<div class="absolute top-0 left-[80px] right-0 h-px bg-slate-100 dark:border-slate-800" style="top: 400px"></div>
+<div class="absolute top-0 left-[80px] right-0 h-px bg-slate-100 dark:border-slate-800" style="top: 480px"></div>
+</div>
+</div>
+</div>
+<!-- Side Panel Overlay: Randevu İptal -->
+<div class="absolute inset-0 bg-black/40 backdrop-blur-sm z-20 flex justify-end">
+<div class="w-[420px] bg-white dark:bg-slate-900 h-full shadow-2xl flex flex-col border-l border-slate-200 dark:border-slate-800">
+<div class="p-6 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between bg-rose-50/50 dark:bg-rose-900/10">
+<div class="flex items-center gap-3">
+<div class="w-10 h-10 bg-rose-100 dark:bg-rose-900/30 text-rose-500 rounded-lg flex items-center justify-center">
+<span class="material-icons">cancel</span>
+</div>
+<div>
+<h3 class="text-lg font-bold text-rose-600">Randevu İptal Et</h3>
+<p class="text-xs text-slate-500">İptal işlemi geri alınamaz</p>
+</div>
+</div>
+<button class="p-2 hover:bg-slate-200 dark:hover:bg-slate-800 rounded-full">
+<span class="material-icons text-slate-400">close</span>
+</button>
+</div>
+<div class="flex-1 p-6 space-y-8 overflow-y-auto">
+<!-- Appointment Summary Card -->
+<div class="p-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/50">
+<p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-3">Randevu Detayları</p>
+<div class="space-y-3">
+<div class="flex justify-between">
+<span class="text-sm text-slate-500">Müşteri</span>
+<span class="text-sm font-semibold">Ayşe Demir</span>
+</div>
+<div class="flex justify-between">
+<span class="text-sm text-slate-500">Hizmet</span>
+<span class="text-sm font-semibold">Saç Kesim + Boya</span>
+</div>
+<div class="flex justify-between">
+<span class="text-sm text-slate-500">Tarih / Saat</span>
+<span class="text-sm font-semibold">16 Mayıs, 10:00</span>
+</div>
+</div>
+</div>
+<!-- Form Fields -->
+<div class="space-y-6">
+<div>
+<label class="block text-sm font-bold mb-2">İptal Nedeni</label>
+<select class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg py-2.5 text-sm focus:ring-primary focus:border-primary">
+<option>Müşteri Talebi</option>
+<option>Personel Rahatsızlığı</option>
+<option>Salon Kapatma</option>
+<option>Yanlış Kayıt</option>
+<option>Diğer</option>
+</select>
+</div>
+<div class="flex items-center justify-between p-4 bg-primary/5 dark:bg-primary/10 rounded-xl">
+<div class="flex flex-col">
+<span class="text-sm font-bold">Müşteri Bilgilendirildi</span>
+<span class="text-[11px] text-slate-500">SMS veya Telefon ile ulaşıldı</span>
+</div>
+<input checked="" class="w-5 h-5 rounded text-primary focus:ring-primary border-slate-300" type="checkbox"/>
+</div>
+<div class="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl">
+<div class="flex flex-col">
+<span class="text-sm font-bold">Slotu Manuel Olarak Aç</span>
+<span class="text-[11px] text-slate-500">Kullanılabilirliği zorla</span>
+</div>
+<label class="relative inline-flex items-center cursor-pointer">
+<input class="sr-only peer" type="checkbox" value=""/>
+<div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-primary"></div>
+</label>
+</div>
+<div>
+<label class="block text-sm font-bold mb-2">Notlar (Opsiyonel)</label>
+<textarea class="w-full bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 rounded-lg text-sm focus:ring-primary focus:border-primary" placeholder="İptal ile ilgili ek açıklama yazınız..." rows="3"></textarea>
+</div>
+</div>
+</div>
+<div class="p-6 border-t border-slate-200 dark:border-slate-800 flex gap-3">
+<button class="flex-1 py-3 px-4 border border-slate-200 dark:border-slate-700 rounded-lg font-semibold hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">Vazgeç</button>
+<button class="flex-[2] py-3 px-4 bg-primary text-white font-bold rounded-lg shadow-lg shadow-primary/20 hover:opacity-90 transition-opacity">Randevuyu İptal Et</button>
+</div>
+</div>
+</div>
+</main>
+</div>
+</body></html>

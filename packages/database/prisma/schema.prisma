@@ -1,0 +1,268 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum AdminRole {
+  BRANCH_ADMIN
+  SUPER_ADMIN
+}
+
+enum AppointmentPreferenceType {
+  ANY
+  PREFERRED
+  REQUIRED
+}
+
+enum AppointmentStatus {
+  CONFIRMED
+  CANCELLED
+}
+
+enum CancellationReason {
+  CUSTOMER_REQUEST
+  SERVICE_DISABLED
+  SERVICE_ISSUE
+}
+
+enum TimeBlockType {
+  BREAK
+  TIME_OFF
+  OTHER
+}
+
+model Branch {
+  id                          String              @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                        String              @db.VarChar(120)
+  timezone                    String              @default("Europe/Istanbul") @db.VarChar(64)
+  slotIntervalMinutes         Int                 @default(10) @map("slot_interval_minutes")
+  cancellationCutoffHours     Int                 @default(24) @map("cancellation_cutoff_hours")
+  cancellationOverrideAllowed Boolean             @default(false) @map("cancellation_override_allowed")
+  active                      Boolean             @default(true)
+  createdAt                   DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt                   DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  adminUsers                  AdminUser[]
+  auditLogs                   AdminAuditLog[]
+  appointments                Appointment[]
+  serviceSuspensions          ServiceSuspension[]
+  staff                       Staff[]
+
+  @@unique([name], map: "branches_name_key")
+  @@index([active], map: "branches_active_idx")
+  @@map("branches")
+}
+
+model AdminUser {
+  id           String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId     String?   @map("branch_id") @db.Uuid
+  name         String    @db.VarChar(120)
+  email        String    @db.VarChar(320)
+  passwordHash String    @map("password_hash") @db.VarChar(255)
+  role         AdminRole
+  active       Boolean   @default(true)
+  createdAt    DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  branch       Branch?   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  auditLogs    AdminAuditLog[]
+
+  @@unique([email], map: "admin_users_email_key")
+  @@index([branchId], map: "admin_users_branch_id_idx")
+  @@map("admin_users")
+}
+
+model AdminAuditLog {
+  id          String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  adminUserId String    @map("admin_user_id") @db.Uuid
+  branchId    String?   @map("branch_id") @db.Uuid
+  action      String    @db.VarChar(80)
+  entityType  String?   @map("entity_type") @db.VarChar(80)
+  entityId    String?   @map("entity_id") @db.Uuid
+  details     Json
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  adminUser   AdminUser @relation(fields: [adminUserId], references: [id], onDelete: Restrict)
+  branch      Branch?   @relation(fields: [branchId], references: [id], onDelete: SetNull)
+
+  @@index([adminUserId, createdAt], map: "admin_audit_logs_admin_user_created_at_idx")
+  @@index([branchId, createdAt], map: "admin_audit_logs_branch_created_at_idx")
+  @@map("admin_audit_logs")
+}
+
+model Customer {
+  id              String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name            String        @db.VarChar(120)
+  phone           String        @db.VarChar(32)
+  normalizedPhone String        @map("normalized_phone") @db.VarChar(32)
+  createdAt       DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  appointments    Appointment[]
+
+  @@unique([normalizedPhone], map: "customers_normalized_phone_key")
+  @@map("customers")
+}
+
+model Service {
+  id                  String               @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  name                String               @db.VarChar(120)
+  durationMinutes     Int                  @map("duration_minutes")
+  bufferMinutes       Int                  @default(0) @map("buffer_minutes")
+  active              Boolean              @default(true)
+  createdAt           DateTime             @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime             @updatedAt @map("updated_at") @db.Timestamptz(6)
+  appointmentServices AppointmentService[]
+  serviceSuspensions  ServiceSuspension[]
+  staffServices       StaffService[]
+
+  @@unique([name], map: "services_name_key")
+  @@index([active], map: "services_active_idx")
+  @@map("services")
+}
+
+model Staff {
+  id                    String             @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId              String             @map("branch_id") @db.Uuid
+  name                  String             @db.VarChar(120)
+  phone                 String?            @db.VarChar(32)
+  active                Boolean            @default(true)
+  createdAt             DateTime           @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt             DateTime           @updatedAt @map("updated_at") @db.Timestamptz(6)
+  assignedAppointments  Appointment[]      @relation("AssignedStaffAppointments")
+  requestedAppointments Appointment[]      @relation("RequestedStaffAppointments")
+  branch                Branch             @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  staffServices         StaffService[]
+  timeBlocks            StaffTimeBlock[]
+  workingHours          StaffWorkingHour[]
+
+  @@index([branchId, active], map: "staff_branch_id_active_idx")
+  @@map("staff")
+}
+
+model StaffService {
+  staffId   String   @map("staff_id") @db.Uuid
+  serviceId String   @map("service_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  service   Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@id([staffId, serviceId])
+  @@index([serviceId], map: "staff_services_service_id_idx")
+  @@map("staff_services")
+}
+
+model StaffWorkingHour {
+  id               String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staffId          String   @map("staff_id") @db.Uuid
+  dayOfWeek        Int      @map("day_of_week")
+  startMinuteOfDay Int      @map("start_minute_of_day")
+  endMinuteOfDay   Int      @map("end_minute_of_day")
+  createdAt        DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  staff            Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, dayOfWeek, startMinuteOfDay, endMinuteOfDay], map: "staff_working_hours_entry_key")
+  @@index([staffId, dayOfWeek], map: "staff_working_hours_staff_id_day_of_week_idx")
+  @@map("staff_working_hours")
+}
+
+model StaffTimeBlock {
+  id        String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  staffId   String        @map("staff_id") @db.Uuid
+  startsAt  DateTime      @map("starts_at") @db.Timestamptz(6)
+  endsAt    DateTime      @map("ends_at") @db.Timestamptz(6)
+  type      TimeBlockType
+  note      String?       @db.VarChar(500)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+  staff     Staff         @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId, startsAt], map: "staff_time_blocks_staff_id_starts_at_idx")
+  @@map("staff_time_blocks")
+}
+
+model ServiceSuspension {
+  id              String   @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId        String   @map("branch_id") @db.Uuid
+  serviceId       String   @map("service_id") @db.Uuid
+  startsAt        DateTime @map("starts_at") @db.Timestamptz(6)
+  endsAt          DateTime @map("ends_at") @db.Timestamptz(6)
+  createdByUserId String?  @map("created_by_user_id") @db.Uuid
+  createdAt       DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  branch          Branch   @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  service         Service  @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@index([branchId, serviceId, startsAt], map: "service_suspensions_branch_service_starts_idx")
+  @@index([branchId, startsAt], map: "service_suspensions_branch_starts_idx")
+  @@map("service_suspensions")
+}
+
+model Appointment {
+  id                  String                     @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  branchId            String                     @map("branch_id") @db.Uuid
+  customerId          String                     @map("customer_id") @db.Uuid
+  assignedStaffId     String                     @map("assigned_staff_id") @db.Uuid
+  preferenceType      AppointmentPreferenceType  @default(ANY) @map("preference_type")
+  requestedStaffId    String?                    @map("requested_staff_id") @db.Uuid
+  status              AppointmentStatus          @default(CONFIRMED)
+  startsAt            DateTime                   @map("starts_at") @db.Timestamptz(6)
+  endsAt              DateTime                   @map("ends_at") @db.Timestamptz(6)
+  allowAlternateStaff Boolean                    @default(false) @map("allow_alternate_staff")
+  createdAt           DateTime                   @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt           DateTime                   @updatedAt @map("updated_at") @db.Timestamptz(6)
+  assignedStaff       Staff                      @relation("AssignedStaffAppointments", fields: [assignedStaffId], references: [id], onDelete: Restrict)
+  branch              Branch                     @relation(fields: [branchId], references: [id], onDelete: Restrict)
+  customer            Customer                   @relation(fields: [customerId], references: [id], onDelete: Restrict)
+  requestedStaff      Staff?                     @relation("RequestedStaffAppointments", fields: [requestedStaffId], references: [id], onDelete: SetNull)
+  appointmentServices AppointmentService[]
+  cancellation        AppointmentCancellation?
+  idempotencyRecords  PublicBookingIdempotency[]
+
+  @@index([assignedStaffId, startsAt], map: "appointments_assigned_staff_id_starts_at_idx")
+  @@index([branchId, startsAt], map: "appointments_branch_id_starts_at_idx")
+  @@index([status, startsAt], map: "appointments_status_starts_at_idx")
+  @@map("appointments")
+}
+
+model AppointmentService {
+  appointmentId   String      @map("appointment_id") @db.Uuid
+  serviceId       String      @map("service_id") @db.Uuid
+  sortOrder       Int         @default(0) @map("sort_order")
+  durationMinutes Int         @map("duration_minutes")
+  bufferMinutes   Int         @default(0) @map("buffer_minutes")
+  createdAt       DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  appointment     Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+  service         Service     @relation(fields: [serviceId], references: [id], onDelete: Restrict)
+
+  @@id([appointmentId, serviceId])
+  @@unique([appointmentId, sortOrder], map: "appointment_services_appointment_id_sort_order_key")
+  @@index([serviceId], map: "appointment_services_service_id_idx")
+  @@map("appointment_services")
+}
+
+model AppointmentCancellation {
+  appointmentId     String             @id @map("appointment_id") @db.Uuid
+  reason            CancellationReason
+  override          Boolean
+  customerContacted Boolean            @map("customer_contacted")
+  note              String?            @db.VarChar(500)
+  cancelledAt       DateTime           @default(now()) @map("cancelled_at") @db.Timestamptz(6)
+  cancelledByUserId String?            @map("cancelled_by_user_id") @db.Uuid
+  appointment       Appointment        @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@map("appointment_cancellations")
+}
+
+model PublicBookingIdempotency {
+  id             String      @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  idempotencyKey String      @map("idempotency_key") @db.VarChar(255)
+  requestHash    String      @map("request_hash") @db.VarChar(64)
+  appointmentId  String      @map("appointment_id") @db.Uuid
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  appointment    Appointment @relation(fields: [appointmentId], references: [id], onDelete: Cascade)
+
+  @@unique([idempotencyKey], map: "public_booking_idempotency_idempotency_key_key")
+  @@index([appointmentId], map: "public_booking_idempotency_appointment_id_idx")
+  @@map("public_booking_idempotency")
+}

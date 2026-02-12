@@ -1,0 +1,260 @@
+<!DOCTYPE html>
+
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Hizmeti Devre Dışı Bırak - Etki Analizi</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13ec80",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#102219",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+<style>
+        body {
+            font-family: 'Public Sans', sans-serif;
+        }
+        .step-connector {
+            flex-grow: 1;
+            height: 2px;
+            background-color: #e5e7eb;
+            margin: 0 1rem;
+        }
+        .step-connector.active {
+            background-color: #13ec80;
+        }
+    </style>
+</head>
+<body class="bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100 min-h-screen">
+<!-- Header Section -->
+<header class="bg-white dark:bg-slate-900 border-b border-primary/10 py-6 px-8">
+<div class="max-w-6xl mx-auto flex justify-between items-center">
+<div>
+<h1 class="text-2xl font-bold tracking-tight">Hizmeti Devre Dışı Bırak</h1>
+<p class="text-slate-500 dark:text-slate-400 text-sm mt-1">Hizmet kısıtlama sihirbazı ile randevuları yönetin.</p>
+</div>
+<button class="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+<span class="material-icons">close</span>
+</button>
+</div>
+</header>
+<main class="max-w-6xl mx-auto py-8 px-8">
+<!-- Stepper Component -->
+<div class="mb-12">
+<div class="flex items-center justify-between max-w-2xl mx-auto">
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white mb-2">
+<span class="material-icons text-sm">check</span>
+</div>
+<span class="text-xs font-semibold text-slate-400">SEÇİM</span>
+</div>
+<div class="step-connector active"></div>
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-primary flex items-center justify-center text-white mb-2">
+<span class="text-sm font-bold">2</span>
+</div>
+<span class="text-xs font-bold text-slate-900 dark:text-white">ETKİ ANALİZİ</span>
+</div>
+<div class="step-connector"></div>
+<div class="flex flex-col items-center">
+<div class="w-10 h-10 rounded-full bg-slate-200 dark:bg-slate-800 flex items-center justify-center text-slate-400 mb-2">
+<span class="text-sm font-bold">3</span>
+</div>
+<span class="text-xs font-semibold text-slate-400">ONAY</span>
+</div>
+</div>
+</div>
+<!-- Alert / Summary Card -->
+<div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800/50 rounded-xl p-6 mb-8 flex items-start space-x-4">
+<div class="bg-amber-100 dark:bg-amber-800/40 p-2 rounded-lg">
+<span class="material-icons text-amber-600 dark:text-amber-400">warning</span>
+</div>
+<div>
+<h3 class="text-amber-800 dark:text-amber-300 font-semibold mb-1">Çakışan Randevular Tespit Edildi</h3>
+<p class="text-amber-700 dark:text-amber-400/80 text-sm leading-relaxed">
+                    Seçilen tarih aralığında (15 - 20 Ekim) bu hizmet için toplam <span class="font-bold">12 adet aktif randevu</span> bulunmaktadır. İşleme devam edebilmek için bu randevuları iptal etmeniz veya başka bir zamana taşımanız gerekmektedir.
+                </p>
+</div>
+</div>
+<!-- Content Area -->
+<div class="bg-white dark:bg-slate-900 rounded-xl shadow-sm border border-primary/10 overflow-hidden">
+<!-- Table Header Actions -->
+<div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/30">
+<div class="flex items-center space-x-2">
+<span class="text-sm font-medium text-slate-600 dark:text-slate-400">Seçilen: 0 randevu</span>
+</div>
+<div class="flex space-x-3">
+<button class="flex items-center space-x-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-medium hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+<span class="material-icons text-sm">filter_list</span>
+<span>Filtrele</span>
+</button>
+<button class="flex items-center space-x-2 px-4 py-2 bg-red-500/10 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/50 rounded-lg text-sm font-semibold hover:bg-red-500 hover:text-white transition-all duration-200">
+<span class="material-icons text-sm">cancel</span>
+<span>Seçilenleri İptal Et</span>
+</button>
+</div>
+</div>
+<!-- Impacted Appointments Table -->
+<div class="overflow-x-auto">
+<table class="w-full text-left">
+<thead>
+<tr class="bg-slate-50/50 dark:bg-slate-800/50 border-b border-slate-100 dark:border-slate-800">
+<th class="px-6 py-4 w-12">
+<input class="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary dark:bg-slate-900" type="checkbox"/>
+</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Tarih &amp; Saat</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Müşteri</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Personel</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider">Şube</th>
+<th class="px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-wider text-right">İşlemler</th>
+</tr>
+</thead>
+<tbody class="divide-y divide-slate-100 dark:divide-slate-800">
+<!-- Row 1 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-6 py-4">
+<input class="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary dark:bg-slate-900" type="checkbox"/>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-semibold">15 Ekim Salı</span>
+<span class="text-xs text-slate-500">10:30 - 11:15</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center space-x-3">
+<img alt="Customer" class="w-8 h-8 rounded-full" data-alt="Portrait of a female salon customer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAHTJN2zuVsTVE_JcAP3xkKPMwJ0nwWdmUA1CmvPMxfbTYyDFudQt5MyG5HffUtg57Y0POUgOLMKMB-BKbxrOhAZ_cWxenVafTz4KQcy4SoKnbZgwHlc1-1eBs2PDqbQNouPaXyt4ywRAP8hDk8JBRtGA1whCtL9dPTSVqY5uuVOBlY_VEoYdU2JCjeuIwl-rQ7dsbO73nYoNrgKqofSDJ_6yX2UwX2AFnUCqAZ2jw_Pu1MXnfzRZZsIDqk3FEF8INmDH5jCppVypOn"/>
+<span class="text-sm font-medium">Ayşe Yılmaz</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm text-slate-700 dark:text-slate-300">Emre Can (Master)</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-xs px-2 py-1 bg-primary/10 text-primary font-medium rounded">Nişantaşı</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="inline-flex items-center space-x-1 text-primary hover:text-emerald-600 font-medium text-sm transition-colors group">
+<span class="material-icons text-sm">calendar_today</span>
+<span>Takvimde Aç</span>
+</button>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-6 py-4">
+<input class="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary dark:bg-slate-900" type="checkbox"/>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-semibold">15 Ekim Salı</span>
+<span class="text-xs text-slate-500">14:00 - 14:45</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center space-x-3">
+<img alt="Customer" class="w-8 h-8 rounded-full" data-alt="Portrait of a male salon customer" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsiOBCqvEWRlZYMlQ_zSsAXwR4mgoGgGEmS_Cudk076rElDyGTBbGstM5pd5cl4j_wjpMKxvCA1QCUDjO9LqxqwyPxcDDZ5dnc_OwILBhUkWqLUYBeVQrXi6COFvQvcvFEAkL8xV2tWDQfoPMSSql0xP9fmbZUoQEaIPt2Uci7AKhRUeD_sSH_aja9I36W6I-61S4RNuYUo__yC2y15Uq0gZfugjjFLr1Ijay9WttXDQhzT7VxLv1jg_111AwynD98FKaudafp-EZw"/>
+<span class="text-sm font-medium">Mehmet Demir</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm text-slate-700 dark:text-slate-300">Sibel Ak</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-xs px-2 py-1 bg-primary/10 text-primary font-medium rounded">Nişantaşı</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="inline-flex items-center space-x-1 text-primary hover:text-emerald-600 font-medium text-sm transition-colors group">
+<span class="material-icons text-sm">calendar_today</span>
+<span>Takvimde Aç</span>
+</button>
+</td>
+</tr>
+<!-- Row 3 -->
+<tr class="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors">
+<td class="px-6 py-4">
+<input class="rounded border-slate-300 dark:border-slate-700 text-primary focus:ring-primary dark:bg-slate-900" type="checkbox"/>
+</td>
+<td class="px-6 py-4">
+<div class="flex flex-col">
+<span class="text-sm font-semibold">16 Ekim Çarşamba</span>
+<span class="text-xs text-slate-500">09:00 - 09:45</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<div class="flex items-center space-x-3">
+<div class="w-8 h-8 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center">
+<span class="text-xs font-bold text-slate-500">ZK</span>
+</div>
+<span class="text-sm font-medium">Zeynep Kaya</span>
+</div>
+</td>
+<td class="px-6 py-4">
+<span class="text-sm text-slate-700 dark:text-slate-300">Emre Can (Master)</span>
+</td>
+<td class="px-6 py-4">
+<span class="text-xs px-2 py-1 bg-primary/10 text-primary font-medium rounded">Bebek</span>
+</td>
+<td class="px-6 py-4 text-right">
+<button class="inline-flex items-center space-x-1 text-primary hover:text-emerald-600 font-medium text-sm transition-colors group">
+<span class="material-icons text-sm">calendar_today</span>
+<span>Takvimde Aç</span>
+</button>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+<!-- Pagination/Footer -->
+<div class="px-6 py-4 bg-slate-50/50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center text-sm text-slate-500">
+<span>Toplam 12 randevudan 1-3 arası gösteriliyor</span>
+<div class="flex space-x-2">
+<button class="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-white dark:hover:bg-slate-800 transition-colors">Önceki</button>
+<button class="px-3 py-1 border border-slate-200 dark:border-slate-700 rounded hover:bg-white dark:hover:bg-slate-800 transition-colors">Sonraki</button>
+</div>
+</div>
+</div>
+<!-- Wizard Navigation Footer -->
+<div class="mt-12 flex justify-between items-center pb-12">
+<button class="flex items-center space-x-2 px-6 py-3 border border-slate-300 dark:border-slate-700 rounded-lg text-slate-600 dark:text-slate-300 font-semibold hover:bg-white dark:hover:bg-slate-800 transition-all">
+<span class="material-icons text-sm">arrow_back</span>
+<span>Geri Dön</span>
+</button>
+<div class="flex items-center space-x-4">
+<div class="hidden md:flex flex-col items-end mr-2">
+<span class="text-xs text-red-500 font-medium">Aksiyon Gerekli</span>
+<span class="text-[10px] text-slate-400">Önce çakışmaları çözün</span>
+</div>
+<button class="flex items-center space-x-2 px-10 py-3 bg-slate-200 dark:bg-slate-800 text-slate-400 cursor-not-allowed rounded-lg font-bold transition-all border border-transparent shadow-inner" disabled="">
+<span>Devre Dışı Bırak</span>
+<span class="material-icons text-sm">block</span>
+</button>
+</div>
+</div>
+</main>
+<!-- Optional: Tooltip for disabled button (Concept) -->
+<div class="fixed hidden bg-slate-800 text-white text-[10px] px-2 py-1 rounded bottom-24 right-8 pointer-events-none" id="tooltip">
+        Lütfen önce tüm çakışan randevuları yönetin.
+    </div>
+</body></html>

@@ -1,0 +1,14 @@
+{
+  "name": "@culturespark/api-contracts",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "files": ["dist", "openapi"],
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "dev": "node --watch scripts/build.mjs",
+    "lint": "node scripts/lint.mjs",
+    "test": "node -e \"console.log('No api-contracts tests yet')\"",
+    "typecheck": "node scripts/lint.mjs"
+  }
+}

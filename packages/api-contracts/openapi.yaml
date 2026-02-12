@@ -1,0 +1,1951 @@
+openapi: 3.1.0
+info:
+  title: CultureSpark Reservation System API
+  version: 1.0.0-mvp
+  description: |
+    MVP API contract for public booking and admin scheduling operations.
+    All timestamps are RFC3339 and stored in UTC server-side.
+servers:
+  - url: /api/v1
+    description: API v1
+
+tags:
+  - name: Public
+  - name: Admin Auth
+  - name: Admin Branches
+  - name: Admin Appointments
+  - name: Admin Service Suspensions
+  - name: Admin Staff
+  - name: Admin Services
+
+paths:
+  /public/branches:
+    get:
+      tags: [Public]
+      summary: List active branches for public selection
+      operationId: listPublicBranches
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paginated branch list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicBranchListResponse'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /public/branches/{branchId}/services:
+    get:
+      tags: [Public]
+      summary: List services for a branch on a given date
+      operationId: listPublicBranchServices
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/Date'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paginated list of branch/date-aware services
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicServiceListResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /public/availability:
+    get:
+      tags: [Public]
+      summary: Get available slots for a branch and service set
+      operationId: getPublicAvailability
+      parameters:
+        - $ref: '#/components/parameters/BranchId'
+        - $ref: '#/components/parameters/ServiceIds'
+        - $ref: '#/components/parameters/Date'
+        - $ref: '#/components/parameters/PreferenceType'
+        - $ref: '#/components/parameters/RequestedStaffId'
+      responses:
+        '200':
+          description: Available slots
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AvailabilityResponse'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          description: Invalid request combination
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                requestedStaffRequired:
+                  value:
+                    error:
+                      code: REQUESTED_STAFF_REQUIRED
+                      message: requestedStaffId is required for REQUIRED and PREFERRED preferenceType
+                      details:
+                        field: requestedStaffId
+        default:
+          $ref: '#/components/responses/Error'
+
+  /public/appointments:
+    post:
+      tags: [Public]
+      summary: Create a public appointment (idempotent)
+      description: |
+        Uses `Idempotency-Key` header to deduplicate retries.
+        - Same key + semantically same payload returns the original appointment.
+        - Same key + semantically different payload returns `409 IDEMPOTENCY_KEY_REUSE`.
+      operationId: createPublicAppointment
+      parameters:
+        - $ref: '#/components/parameters/IdempotencyKey'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PublicAppointmentCreateRequest'
+      responses:
+        '201':
+          description: Appointment created or replayed for identical idempotent request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '409':
+          description: Business conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                slotConflict:
+                  value:
+                    error:
+                      code: SLOT_CONFLICT
+                      message: Slot is no longer available
+                      details:
+                        startsAt: '2025-01-10T10:00:00Z'
+                idempotencyReuse:
+                  value:
+                    error:
+                      code: IDEMPOTENCY_KEY_REUSE
+                      message: Idempotency-Key has already been used with a different request
+                      details:
+                        idempotencyKey: c548cc40-922f-4f5f-a8ce-2731f5d11177
+        '422':
+          description: Validation or policy error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalidAlignment:
+                  value:
+                    error:
+                      code: INVALID_SLOT_ALIGNMENT
+                      message: startsAt must align with branch slot interval
+                      details:
+                        slotIntervalMinutes: 10
+                preferredUnavailable:
+                  value:
+                    error:
+                      code: PREFERRED_STAFF_UNAVAILABLE
+                      message: Preferred staff is unavailable for this slot
+                      details:
+                        requestedStaffId: stf_123
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/auth/login:
+    post:
+      tags: [Admin Auth]
+      summary: Admin login
+      operationId: adminLogin
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminLoginRequest'
+      responses:
+        '200':
+          description: Authenticated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminAuthResponse'
+        '401':
+          description: Invalid credentials
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: INVALID_CREDENTIALS
+                  message: Invalid email or password
+                  details: {}
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/me:
+    get:
+      tags: [Admin Auth]
+      summary: Get current admin profile
+      operationId: getAdminMe
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Current admin
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUser'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/settings:
+    patch:
+      tags: [Admin Branches]
+      summary: Patch branch scheduling and cancellation settings
+      operationId: patchBranchSettings
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BranchSettingsPatchRequest'
+      responses:
+        '200':
+          description: Branch settings updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BranchSettings'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/appointments:
+    get:
+      tags: [Admin Appointments]
+      summary: List appointments
+      operationId: listAdminAppointments
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchId'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/StaffId'
+        - $ref: '#/components/parameters/AppointmentStatus'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paginated appointments
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Admin Appointments]
+      summary: Create appointment from admin calendar
+      operationId: createAdminAppointment
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAppointmentCreateRequest'
+      responses:
+        '201':
+          description: Appointment created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          description: Booking conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: SLOT_CONFLICT
+                  message: Slot is no longer available
+                  details: {}
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/appointments/{appointmentId}:
+    patch:
+      tags: [Admin Appointments]
+      summary: Patch appointment (reschedule/reassign/update services)
+      operationId: patchAdminAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AdminAppointmentPatchRequest'
+      responses:
+        '200':
+          description: Appointment updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Booking conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: SLOT_CONFLICT
+                  message: Slot is no longer available
+                  details: {}
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/appointments/{appointmentId}/cancel:
+    post:
+      tags: [Admin Appointments]
+      summary: Cancel an appointment
+      description: |
+        Supports cancellation policy inputs:
+        - `reason`: CUSTOMER_REQUEST, SERVICE_DISABLED, SERVICE_ISSUE
+        - `override`: bypass cutoff policy when permitted
+        - `customerContacted`: required true for SERVICE_* reasons
+      operationId: cancelAdminAppointment
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/AppointmentIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AppointmentCancelRequest'
+      responses:
+        '200':
+          description: Appointment canceled
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AppointmentResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: Override disallowed for this actor or branch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: OVERRIDE_NOT_ALLOWED
+                  message: Override cancellation is not allowed for this branch or user
+                  details: {}
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Cancellation policy conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                cutoff:
+                  value:
+                    error:
+                      code: CANCELLATION_CUTOFF
+                      message: Cancellation cutoff window has passed
+                      details:
+                        cancellationCutoffHours: 4
+                invalidStatus:
+                  value:
+                    error:
+                      code: APPOINTMENT_ALREADY_CANCELLED
+                      message: Appointment is already cancelled
+                      details: {}
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/service-suspensions/preview:
+    post:
+      tags: [Admin Service Suspensions]
+      summary: Preview impacted appointments before creating a suspension
+      operationId: previewServiceSuspension
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceSuspensionRequest'
+      responses:
+        '200':
+          description: Impacted appointments in range
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceSuspensionPreviewResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/service-suspensions:
+    post:
+      tags: [Admin Service Suspensions]
+      summary: Create a service suspension for a branch
+      description: Must return `409 IMPACTED_APPOINTMENTS_EXIST` when preview would return impacted appointments.
+      operationId: createServiceSuspension
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ServiceSuspensionRequest'
+      responses:
+        '201':
+          description: Suspension created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ServiceSuspension'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Impacted confirmed appointments still exist
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error:
+                  code: IMPACTED_APPOINTMENTS_EXIST
+                  message: Cannot create suspension while impacted appointments exist
+                  details:
+                    impactedCount: 2
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/staff:
+    get:
+      tags: [Admin Staff]
+      summary: List staff in a branch
+      operationId: listBranchStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paginated staff list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Admin Staff]
+      summary: Create staff in a branch
+      operationId: createBranchStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffCreateRequest'
+      responses:
+        '201':
+          description: Staff created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/staff/{staffId}:
+    get:
+      tags: [Admin Staff]
+      summary: Get staff detail
+      operationId: getBranchStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+      responses:
+        '200':
+          description: Staff detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffDetail'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [Admin Staff]
+      summary: Patch staff profile or active state
+      operationId: patchBranchStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffPatchRequest'
+      responses:
+        '200':
+          description: Staff updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Staff'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [Admin Staff]
+      summary: Delete staff (hard delete)
+      operationId: deleteBranchStaff
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+      responses:
+        '204':
+          description: Staff deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/staff/{staffId}/skills:
+    put:
+      tags: [Admin Staff]
+      summary: Replace staff skills for branch services
+      operationId: replaceBranchStaffSkills
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffSkillsRequest'
+      responses:
+        '200':
+          description: Skills updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffSkillsResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/staff/{staffId}/working-hours:
+    get:
+      tags: [Admin Staff]
+      summary: Get weekly working hours
+      operationId: getStaffWorkingHours
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+      responses:
+        '200':
+          description: Weekly schedule entries
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkingHoursResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    put:
+      tags: [Admin Staff]
+      summary: Replace weekly working hours
+      operationId: replaceStaffWorkingHours
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkingHoursReplaceRequest'
+      responses:
+        '200':
+          description: Working hours updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkingHoursResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/staff/{staffId}/time-blocks:
+    get:
+      tags: [Admin Staff]
+      summary: List staff time blocks
+      operationId: listStaffTimeBlocks
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+        - $ref: '#/components/parameters/From'
+        - $ref: '#/components/parameters/To'
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paginated time blocks
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeBlockListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Admin Staff]
+      summary: Create time block
+      operationId: createStaffTimeBlock
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeBlockCreateRequest'
+      responses:
+        '201':
+          description: Time block created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeBlock'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/branches/{branchId}/staff/{staffId}/time-blocks/{timeBlockId}:
+    patch:
+      tags: [Admin Staff]
+      summary: Patch time block
+      operationId: patchStaffTimeBlock
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+        - $ref: '#/components/parameters/TimeBlockIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TimeBlockPatchRequest'
+      responses:
+        '200':
+          description: Time block updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TimeBlock'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [Admin Staff]
+      summary: Delete time block
+      operationId: deleteStaffTimeBlock
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/BranchIdPath'
+        - $ref: '#/components/parameters/StaffIdPath'
+        - $ref: '#/components/parameters/TimeBlockIdPath'
+      responses:
+        '204':
+          description: Time block deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/services:
+    get:
+      tags: [Admin Services]
+      summary: List global services (Super Admin)
+      operationId: listGlobalServices
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/Page'
+        - $ref: '#/components/parameters/Size'
+      responses:
+        '200':
+          description: Paginated service list
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalServiceListResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        default:
+          $ref: '#/components/responses/Error'
+    post:
+      tags: [Admin Services]
+      summary: Create global service (Super Admin)
+      operationId: createGlobalService
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GlobalServiceCreateRequest'
+      responses:
+        '201':
+          description: Service created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalService'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+
+  /admin/services/{serviceId}:
+    get:
+      tags: [Admin Services]
+      summary: Get global service detail (Super Admin)
+      operationId: getGlobalService
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ServiceIdPath'
+      responses:
+        '200':
+          description: Service detail
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalService'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+    patch:
+      tags: [Admin Services]
+      summary: Patch global service (Super Admin)
+      operationId: patchGlobalService
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ServiceIdPath'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GlobalServicePatchRequest'
+      responses:
+        '200':
+          description: Service updated
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GlobalService'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '422':
+          $ref: '#/components/responses/UnprocessableEntity'
+        default:
+          $ref: '#/components/responses/Error'
+    delete:
+      tags: [Admin Services]
+      summary: Delete global service (Super Admin)
+      operationId: deleteGlobalService
+      security:
+        - bearerAuth: []
+      parameters:
+        - $ref: '#/components/parameters/ServiceIdPath'
+      responses:
+        '204':
+          description: Service deleted
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        default:
+          $ref: '#/components/responses/Error'
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  parameters:
+    BranchId:
+      name: branchId
+      in: query
+      required: true
+      schema:
+        type: string
+    BranchIdPath:
+      name: branchId
+      in: path
+      required: true
+      schema:
+        type: string
+    ServiceIdPath:
+      name: serviceId
+      in: path
+      required: true
+      schema:
+        type: string
+    AppointmentIdPath:
+      name: appointmentId
+      in: path
+      required: true
+      schema:
+        type: string
+    StaffId:
+      name: staffId
+      in: query
+      required: false
+      schema:
+        type: string
+    StaffIdPath:
+      name: staffId
+      in: path
+      required: true
+      schema:
+        type: string
+    TimeBlockIdPath:
+      name: timeBlockId
+      in: path
+      required: true
+      schema:
+        type: string
+    Date:
+      name: date
+      in: query
+      required: true
+      schema:
+        type: string
+        format: date
+    From:
+      name: from
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    To:
+      name: to
+      in: query
+      required: false
+      schema:
+        type: string
+        format: date-time
+    ServiceIds:
+      name: serviceIds
+      in: query
+      required: true
+      style: form
+      explode: true
+      schema:
+        type: array
+        minItems: 1
+        items:
+          type: string
+    PreferenceType:
+      name: preferenceType
+      in: query
+      required: true
+      schema:
+        $ref: '#/components/schemas/PreferenceType'
+    RequestedStaffId:
+      name: requestedStaffId
+      in: query
+      required: false
+      schema:
+        type: string
+      description: Required when preferenceType is REQUIRED or PREFERRED.
+    AppointmentStatus:
+      name: status
+      in: query
+      required: false
+      schema:
+        $ref: '#/components/schemas/AppointmentStatus'
+    Page:
+      name: page
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        default: 1
+    Size:
+      name: size
+      in: query
+      required: false
+      schema:
+        type: integer
+        minimum: 1
+        maximum: 200
+        default: 20
+    IdempotencyKey:
+      name: Idempotency-Key
+      in: header
+      required: true
+      schema:
+        type: string
+        minLength: 8
+        maxLength: 255
+      description: Client-generated unique key for safe retries.
+
+  responses:
+    Error:
+      description: Error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+    Unauthorized:
+      description: Missing/invalid authentication
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: UNAUTHORIZED
+              message: Authentication is required
+              details: {}
+    Forbidden:
+      description: Request not allowed for role/scope
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: FORBIDDEN
+              message: You do not have permission to perform this action
+              details: {}
+    NotFound:
+      description: Requested resource not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: NOT_FOUND
+              message: Resource not found
+              details: {}
+    UnprocessableEntity:
+      description: Request validation failed
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ErrorResponse'
+          example:
+            error:
+              code: VALIDATION_ERROR
+              message: Request validation failed
+              details:
+                fields: {}
+
+  schemas:
+    ErrorResponse:
+      type: object
+      additionalProperties: false
+      required: [error]
+      properties:
+        error:
+          type: object
+          additionalProperties: false
+          required: [code, message, details]
+          properties:
+            code:
+              $ref: '#/components/schemas/ErrorCode'
+            message:
+              type: string
+            details:
+              type: object
+              additionalProperties: true
+
+    ErrorCode:
+      type: string
+      enum:
+        - UNAUTHORIZED
+        - FORBIDDEN
+        - INVALID_CREDENTIALS
+        - NOT_FOUND
+        - VALIDATION_ERROR
+        - IDEMPOTENCY_KEY_REUSE
+        - SLOT_CONFLICT
+        - INVALID_SLOT_ALIGNMENT
+        - PREFERRED_STAFF_UNAVAILABLE
+        - REQUESTED_STAFF_REQUIRED
+        - IMPACTED_APPOINTMENTS_EXIST
+        - CANCELLATION_CUTOFF
+        - OVERRIDE_NOT_ALLOWED
+        - APPOINTMENT_ALREADY_CANCELLED
+
+    Pagination:
+      type: object
+      additionalProperties: false
+      required: [page, size, totalItems, totalPages]
+      properties:
+        page:
+          type: integer
+          minimum: 1
+        size:
+          type: integer
+          minimum: 1
+        totalItems:
+          type: integer
+          minimum: 0
+        totalPages:
+          type: integer
+          minimum: 0
+
+    BranchPublic:
+      type: object
+      additionalProperties: false
+      required: [id, name, timezone]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        timezone:
+          type: string
+          const: Europe/Istanbul
+
+    PublicBranchListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchPublic'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    ServiceSummary:
+      type: object
+      additionalProperties: false
+      required: [id, name, durationMinutes, bufferMinutes]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        durationMinutes:
+          type: integer
+          minimum: 1
+        bufferMinutes:
+          type: integer
+          minimum: 0
+
+    BranchServicePublic:
+      allOf:
+        - $ref: '#/components/schemas/ServiceSummary'
+        - type: object
+          additionalProperties: false
+          required: [isActiveGlobally, isSuspendedForDate, isBookable]
+          properties:
+            isActiveGlobally:
+              type: boolean
+            isSuspendedForDate:
+              type: boolean
+            isBookable:
+              type: boolean
+
+    PublicServiceListResponse:
+      type: object
+      additionalProperties: false
+      required: [date, items, pagination]
+      properties:
+        date:
+          type: string
+          format: date
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/BranchServicePublic'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    PreferenceType:
+      type: string
+      enum: [REQUIRED, PREFERRED, ANY]
+
+    AvailabilitySlot:
+      type: object
+      additionalProperties: false
+      required: [startsAt, endsAt]
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        preferredStaffAvailable:
+          type: boolean
+          description: Present for PREFERRED lookups.
+
+    AvailabilityResponse:
+      type: object
+      additionalProperties: false
+      required: [slotIntervalMinutes, totalDurationMinutes, slots]
+      properties:
+        slotIntervalMinutes:
+          type: integer
+          minimum: 1
+        totalDurationMinutes:
+          type: integer
+          minimum: 1
+        slots:
+          type: array
+          items:
+            $ref: '#/components/schemas/AvailabilitySlot'
+
+    CustomerInput:
+      type: object
+      additionalProperties: false
+      required: [name, phone]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+          minLength: 7
+
+    PublicAppointmentCreateRequest:
+      type: object
+      additionalProperties: false
+      required:
+        [branchId, serviceIds, startsAt, preferenceType, customer]
+      properties:
+        branchId:
+          type: string
+        serviceIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        startsAt:
+          type: string
+          format: date-time
+        preferenceType:
+          $ref: '#/components/schemas/PreferenceType'
+        requestedStaffId:
+          type: string
+          description: Required for REQUIRED and PREFERRED.
+        allowAlternateStaff:
+          type: boolean
+          default: false
+          description: Must be true to book PREFERRED flow when preferred staff is unavailable.
+        customer:
+          $ref: '#/components/schemas/CustomerInput'
+
+    AppointmentStatus:
+      type: string
+      enum: [CONFIRMED, CANCELLED]
+
+    AppointmentService:
+      type: object
+      additionalProperties: false
+      required: [id, name, durationMinutes, bufferMinutes]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        durationMinutes:
+          type: integer
+          minimum: 1
+        bufferMinutes:
+          type: integer
+          minimum: 0
+
+    Appointment:
+      type: object
+      additionalProperties: false
+      required:
+        - id
+        - branchId
+        - startsAt
+        - endsAt
+        - status
+        - services
+        - customer
+        - assignedStaff
+        - preferenceType
+      properties:
+        id:
+          type: string
+        branchId:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        status:
+          $ref: '#/components/schemas/AppointmentStatus'
+        services:
+          type: array
+          minItems: 1
+          items:
+            $ref: '#/components/schemas/AppointmentService'
+        customer:
+          type: object
+          additionalProperties: false
+          required: [name, phone]
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+        assignedStaff:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+        preferenceType:
+          $ref: '#/components/schemas/PreferenceType'
+        requestedStaffId:
+          type: string
+          nullable: true
+        cancellation:
+          $ref: '#/components/schemas/AppointmentCancellation'
+        createdAt:
+          type: string
+          format: date-time
+        updatedAt:
+          type: string
+          format: date-time
+
+    AppointmentResponse:
+      type: object
+      additionalProperties: false
+      required: [appointment]
+      properties:
+        appointment:
+          $ref: '#/components/schemas/Appointment'
+
+    AppointmentListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Appointment'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    AdminLoginRequest:
+      type: object
+      additionalProperties: false
+      required: [email, password]
+      properties:
+        email:
+          type: string
+          format: email
+        password:
+          type: string
+          minLength: 8
+
+    AdminRole:
+      type: string
+      enum: [BRANCH_ADMIN, SUPER_ADMIN]
+
+    AdminUser:
+      type: object
+      additionalProperties: false
+      required: [id, name, email, role]
+      properties:
+        id:
+          type: string
+        name:
+          type: string
+        email:
+          type: string
+          format: email
+        role:
+          $ref: '#/components/schemas/AdminRole'
+        branchId:
+          type: string
+          nullable: true
+          description: Set for BRANCH_ADMIN users.
+
+    AdminAuthResponse:
+      type: object
+      additionalProperties: false
+      required: [accessToken, tokenType, expiresInSeconds, user]
+      properties:
+        accessToken:
+          type: string
+        tokenType:
+          type: string
+          const: Bearer
+        expiresInSeconds:
+          type: integer
+          minimum: 1
+        user:
+          $ref: '#/components/schemas/AdminUser'
+
+    BranchSettings:
+      type: object
+      additionalProperties: false
+      required: [branchId, slotIntervalMinutes, cancellationCutoffHours, cancellationOverrideAllowed]
+      properties:
+        branchId:
+          type: string
+        slotIntervalMinutes:
+          type: integer
+          minimum: 1
+          description: Booking slots must align to this interval.
+        cancellationCutoffHours:
+          type: integer
+          minimum: 0
+        cancellationOverrideAllowed:
+          type: boolean
+
+    BranchSettingsPatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        slotIntervalMinutes:
+          type: integer
+          minimum: 1
+        cancellationCutoffHours:
+          type: integer
+          minimum: 0
+        cancellationOverrideAllowed:
+          type: boolean
+
+    AdminAppointmentCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [branchId, serviceIds, startsAt, customer]
+      properties:
+        branchId:
+          type: string
+        serviceIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        startsAt:
+          type: string
+          format: date-time
+        preferenceType:
+          $ref: '#/components/schemas/PreferenceType'
+        requestedStaffId:
+          type: string
+        assignedStaffId:
+          type: string
+          description: Optional explicit assignment; required if preferenceType is REQUIRED.
+        customer:
+          $ref: '#/components/schemas/CustomerInput'
+
+    AdminAppointmentPatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        serviceIds:
+          type: array
+          minItems: 1
+          items:
+            type: string
+        assignedStaffId:
+          type: string
+
+    CancellationReason:
+      type: string
+      enum: [CUSTOMER_REQUEST, SERVICE_DISABLED, SERVICE_ISSUE]
+
+    AppointmentCancelRequest:
+      type: object
+      additionalProperties: false
+      required: [reason, override, customerContacted]
+      properties:
+        reason:
+          $ref: '#/components/schemas/CancellationReason'
+        override:
+          type: boolean
+          description: Set true to bypass cutoff policy when role/branch allows.
+        customerContacted:
+          type: boolean
+          description: Must be true for SERVICE_DISABLED and SERVICE_ISSUE reasons.
+        note:
+          type: string
+
+    AppointmentCancellation:
+      type: object
+      additionalProperties: false
+      required: [reason, override, customerContacted, cancelledAt]
+      properties:
+        reason:
+          $ref: '#/components/schemas/CancellationReason'
+        override:
+          type: boolean
+        customerContacted:
+          type: boolean
+        note:
+          type: string
+        cancelledAt:
+          type: string
+          format: date-time
+        cancelledByUserId:
+          type: string
+
+    ServiceSuspensionRequest:
+      type: object
+      additionalProperties: false
+      required: [serviceId, startsAt, endsAt]
+      properties:
+        serviceId:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+
+    ServiceSuspensionPreviewItem:
+      type: object
+      additionalProperties: false
+      required: [appointmentId, startsAt, endsAt, customer, assignedStaff]
+      properties:
+        appointmentId:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        customer:
+          type: object
+          additionalProperties: false
+          required: [name, phone]
+          properties:
+            name:
+              type: string
+            phone:
+              type: string
+        assignedStaff:
+          type: object
+          additionalProperties: false
+          required: [id, name]
+          properties:
+            id:
+              type: string
+            name:
+              type: string
+
+    ServiceSuspensionPreviewResponse:
+      type: object
+      additionalProperties: false
+      required: [impactedCount, impactedAppointments]
+      properties:
+        impactedCount:
+          type: integer
+          minimum: 0
+        impactedAppointments:
+          type: array
+          items:
+            $ref: '#/components/schemas/ServiceSuspensionPreviewItem'
+
+    ServiceSuspension:
+      type: object
+      additionalProperties: false
+      required: [id, branchId, serviceId, startsAt, endsAt, createdAt]
+      properties:
+        id:
+          type: string
+        branchId:
+          type: string
+        serviceId:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        createdAt:
+          type: string
+          format: date-time
+        createdByUserId:
+          type: string
+
+    Staff:
+      type: object
+      additionalProperties: false
+      required: [id, branchId, name, active]
+      properties:
+        id:
+          type: string
+        branchId:
+          type: string
+        name:
+          type: string
+        phone:
+          type: string
+        active:
+          type: boolean
+
+    StaffDetail:
+      allOf:
+        - $ref: '#/components/schemas/Staff'
+        - type: object
+          additionalProperties: false
+          required: [skillServiceIds]
+          properties:
+            skillServiceIds:
+              type: array
+              items:
+                type: string
+
+    StaffCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+        active:
+          type: boolean
+          default: true
+
+    StaffPatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        phone:
+          type: string
+        active:
+          type: boolean
+
+    StaffSkillsRequest:
+      type: object
+      additionalProperties: false
+      required: [serviceIds]
+      properties:
+        serviceIds:
+          type: array
+          items:
+            type: string
+
+    StaffSkillsResponse:
+      type: object
+      additionalProperties: false
+      required: [staffId, serviceIds]
+      properties:
+        staffId:
+          type: string
+        serviceIds:
+          type: array
+          items:
+            type: string
+
+    WorkingHoursEntry:
+      type: object
+      additionalProperties: false
+      required: [dayOfWeek, startTime, endTime]
+      properties:
+        dayOfWeek:
+          type: integer
+          minimum: 1
+          maximum: 7
+          description: 1=Monday ... 7=Sunday
+        startTime:
+          type: string
+          pattern: '^([01]\\d|2[0-3]):[0-5]\\d$'
+          example: '09:00'
+        endTime:
+          type: string
+          pattern: '^([01]\\d|2[0-3]):[0-5]\\d$'
+          example: '18:00'
+
+    WorkingHoursReplaceRequest:
+      type: object
+      additionalProperties: false
+      required: [entries]
+      properties:
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingHoursEntry'
+
+    WorkingHoursResponse:
+      type: object
+      additionalProperties: false
+      required: [staffId, entries]
+      properties:
+        staffId:
+          type: string
+        entries:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkingHoursEntry'
+
+    TimeBlockType:
+      type: string
+      enum: [BREAK, TIME_OFF, OTHER]
+
+    TimeBlock:
+      type: object
+      additionalProperties: false
+      required: [id, staffId, startsAt, endsAt, type]
+      properties:
+        id:
+          type: string
+        staffId:
+          type: string
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        type:
+          $ref: '#/components/schemas/TimeBlockType'
+        note:
+          type: string
+
+    TimeBlockCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [startsAt, endsAt, type]
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        type:
+          $ref: '#/components/schemas/TimeBlockType'
+        note:
+          type: string
+
+    TimeBlockPatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        startsAt:
+          type: string
+          format: date-time
+        endsAt:
+          type: string
+          format: date-time
+        type:
+          $ref: '#/components/schemas/TimeBlockType'
+        note:
+          type: string
+
+    StaffListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Staff'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    TimeBlockListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/TimeBlock'
+        pagination:
+          $ref: '#/components/schemas/Pagination'
+
+    GlobalService:
+      allOf:
+        - $ref: '#/components/schemas/ServiceSummary'
+        - type: object
+          additionalProperties: false
+          required: [active]
+          properties:
+            active:
+              type: boolean
+
+    GlobalServiceCreateRequest:
+      type: object
+      additionalProperties: false
+      required: [name, durationMinutes, bufferMinutes, active]
+      properties:
+        name:
+          type: string
+          minLength: 1
+        durationMinutes:
+          type: integer
+          minimum: 1
+        bufferMinutes:
+          type: integer
+          minimum: 0
+        active:
+          type: boolean
+
+    GlobalServicePatchRequest:
+      type: object
+      additionalProperties: false
+      minProperties: 1
+      properties:
+        name:
+          type: string
+          minLength: 1
+        durationMinutes:
+          type: integer
+          minimum: 1
+        bufferMinutes:
+          type: integer
+          minimum: 0
+        active:
+          type: boolean
+
+    GlobalServiceListResponse:
+      type: object
+      additionalProperties: false
+      required: [items, pagination]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/GlobalService'
+        pagination:
+          $ref: '#/components/schemas/Pagination'

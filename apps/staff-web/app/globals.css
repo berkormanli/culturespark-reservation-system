@@ -1,0 +1,33 @@
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Public Sans", ui-sans-serif, system-ui, sans-serif;
+
+  --color-primary: #13ec80;
+  --color-background-light: #f6f8f7;
+  --color-background-dark: #102219;
+
+  --radius-DEFAULT: 0.25rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+  --radius-full: 9999px;
+}
+
+@layer base {
+  body {
+    @apply font-sans bg-background-light dark:bg-background-dark text-slate-900 dark:text-slate-100;
+  }
+}
+
+@layer components {
+  .step-connector {
+    @apply flex-grow h-[2px] bg-gray-200 mx-4;
+  }
+  .step-connector.active {
+    @apply bg-primary;
+  }
+  .sidebar-item-active {
+    @apply border-r-4 border-primary bg-primary/10;
+  }
+}

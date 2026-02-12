@@ -1,0 +1,18 @@
+export enum StaffPreferenceMode {
+  ANY = "ANY",
+  PREFERRED = "PREFERRED",
+  REQUIRED = "REQUIRED",
+}
+
+export enum AppointmentStatus {
+  PENDING = "PENDING",
+  CONFIRMED = "CONFIRMED",
+  COMPLETED = "COMPLETED",
+  CANCELED = "CANCELED",
+}
+
+export enum CancellationReason {
+  CUSTOMER_REQUEST = "CUSTOMER_REQUEST",
+  SERVICE_DISABLED = "SERVICE_DISABLED",
+  SERVICE_ISSUE = "SERVICE_ISSUE",
+}

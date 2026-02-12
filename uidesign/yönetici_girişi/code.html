@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+
+<html lang="tr"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Yönetici Girişi - Salon Yönetim Paneli</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Public+Sans:wght@300;400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#13ec80",
+                        "background-light": "#f6f8f7",
+                        "background-dark": "#102219",
+                    },
+                    fontFamily: {
+                        "display": ["Public Sans", "sans-serif"]
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.25rem",
+                        "lg": "0.5rem",
+                        "xl": "0.75rem",
+                        "full": "9999px"
+                    },
+                },
+            },
+        }
+    </script>
+</head>
+<body class="font-display bg-background-light dark:bg-background-dark min-h-screen flex items-center justify-center p-4">
+<!-- Background Decoration (Abstract Shapes) -->
+<div class="fixed inset-0 overflow-hidden pointer-events-none">
+<div class="absolute -top-24 -left-24 w-96 h-96 bg-primary/10 rounded-full blur-3xl"></div>
+<div class="absolute -bottom-24 -right-24 w-96 h-96 bg-primary/5 rounded-full blur-3xl"></div>
+</div>
+<main class="relative w-full max-w-md">
+<!-- Salon Branding -->
+<div class="text-center mb-8">
+<div class="inline-flex items-center justify-center w-16 h-16 bg-white dark:bg-zinc-900 rounded-xl shadow-sm mb-4 border border-zinc-100 dark:border-zinc-800">
+<span class="material-icons text-primary text-4xl">content_cut</span>
+</div>
+<h1 class="text-2xl font-bold text-zinc-800 dark:text-zinc-100">Yönetici Girişi</h1>
+<p class="text-zinc-500 dark:text-zinc-400 mt-2 text-sm">Çoklu şube yönetim sistemine hoş geldiniz</p>
+</div>
+<!-- Login Card -->
+<div class="bg-white dark:bg-zinc-900 shadow-xl shadow-zinc-200/50 dark:shadow-none rounded-xl p-8 border border-zinc-100 dark:border-zinc-800">
+<!-- Error Alert Box -->
+<div class="mb-6 flex items-center gap-3 p-4 bg-red-50 dark:bg-red-950/30 border border-red-100 dark:border-red-900/50 rounded-lg text-red-600 dark:text-red-400 animate-pulse">
+<span class="material-icons text-xl">error_outline</span>
+<p class="text-sm font-medium">Hatalı e‑posta veya şifre</p>
+</div>
+<form action="#" class="space-y-5" method="POST">
+<!-- Email Field -->
+<div>
+<label class="block text-sm font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5" for="email">E-posta Adresi</label>
+<div class="relative">
+<span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xl">mail_outline</span>
+<input class="w-full pl-11 pr-4 py-2.5 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400" id="email" name="email" placeholder="admin@salonadi.com" type="email" value="yonetici@example.com"/>
+</div>
+</div>
+<!-- Password Field -->
+<div>
+<div class="flex justify-between items-center mb-1.5">
+<label class="text-sm font-semibold text-zinc-700 dark:text-zinc-300" for="password">Şifre</label>
+<a class="text-xs font-medium text-primary hover:underline transition-all" href="#">Şifremi Unuttum</a>
+</div>
+<div class="relative">
+<span class="material-icons absolute left-3 top-1/2 -translate-y-1/2 text-zinc-400 text-xl">lock_open</span>
+<input class="w-full pl-11 pr-12 py-2.5 bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 rounded-lg focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400" id="password" name="password" placeholder="••••••••" type="password" value="********"/>
+<button class="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors" type="button">
+<span class="material-icons text-xl">visibility_off</span>
+</button>
+</div>
+</div>
+<!-- Login Button -->
+<button class="w-full bg-primary hover:bg-primary/90 text-zinc-900 font-bold py-3 px-4 rounded-lg shadow-lg shadow-primary/20 transition-all flex items-center justify-center gap-2 mt-4" type="submit">
+<span>Giriş Yap</span>
+<span class="material-icons text-lg">login</span>
+</button>
+</form>
+<!-- Bottom Support Info -->
+<div class="mt-8 pt-6 border-t border-zinc-100 dark:border-zinc-800 text-center">
+<p class="text-xs text-zinc-500 dark:text-zinc-400">
+                    Hesabınıza erişemiyor musunuz? 
+                    <a class="text-zinc-700 dark:text-zinc-200 font-semibold hover:text-primary transition-colors" href="#">Destek birimiyle iletişime geçin.</a>
+</p>
+</div>
+</div>
+<!-- System Status/Version -->
+<div class="mt-8 text-center flex flex-col gap-1">
+<p class="text-[10px] uppercase tracking-widest text-zinc-400 dark:text-zinc-500 font-bold">Salon Yönetim Sistemi v2.4.0</p>
+<div class="flex items-center justify-center gap-2 mt-2">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+<span class="text-xs text-zinc-500 dark:text-zinc-400">Tüm sistemler çalışıyor</span>
+</div>
+</div>
+</main>
+<!-- Visual Element: Salon Background Image (Subtle Overlay) -->
+<div class="fixed inset-0 z-[-1] opacity-5 dark:opacity-[0.03]">
+<img alt="Luxury Hair Salon Interior" class="w-full h-full object-cover" data-alt="Blurred modern minimalist hair salon interior background" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAzX5RDELVLpIAvJSrVoYaWbR8pOgO3dzjJZu7aJAcq75W87CLRbrEoAKt4gFKazq1c5SUFlrdD6aKMrKWlf2txrdDEmEmKbMzpRYZhU7eYCqQybhc77DqGbnjkTIK7p-mjCwIBUB8d1ImOZOWTWPERZkcZZ56OlLaKKOay6H7f-DR1MHanVxH-pSk-GcA8yCR-4w0D1JdR2HBA99mUys6wTbb-KiMo_zemsOiV2UE76aW9QBnyXRVOKX3WFWSa7aQW9t6nSxJ2-RJc"/>
+</div>
+</body></html>
