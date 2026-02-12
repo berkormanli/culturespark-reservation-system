@@ -1,0 +1,11 @@
+node_modules
+.pnpm-store
+.env
+.env.local
+.env.*.local
+dist
+.next
+coverage
+.turbo
+.DS_Store
+*.tsbuildinfo
